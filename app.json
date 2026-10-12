@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "FotoOwl.AI",
+    "slug": "fotoowl-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#0B111E",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryAddUsageDescription": "FotoOwl.AI needs access to your photo library to save downloaded photos.",
+        "NSPhotoLibraryUsageDescription": "FotoOwl.AI needs access to your photo library to save photos."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B111E",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "ai.fotoowl.app",
+      "permissions": [
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sharing",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Grant FotoOwl.AI access to save photos to your device.",
+          "savePhotosPermission": "Grant FotoOwl.AI access to save photos to your device."
+        }
+      ]
+    ]
+  }
+}
