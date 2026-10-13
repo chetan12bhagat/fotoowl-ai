@@ -5,10 +5,12 @@ from .core.config import settings
 
 logger = logging.getLogger("fotoowl.database")
 
-# Ensure PostgreSQL dialect compatibility (Render/Neon provide postgres://, SQLAlchemy requires postgresql://)
+# Ensure PostgreSQL dialect compatibility (Render/Neon provide postgres://, SQLAlchemy requires postgresql+psycopg2://)
 raw_db_url = settings.DATABASE_URL
 if raw_db_url.startswith("postgres://"):
-    db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
+    db_url = raw_db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif raw_db_url.startswith("postgresql://") and not raw_db_url.startswith("postgresql+"):
+    db_url = raw_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 else:
     db_url = raw_db_url
 

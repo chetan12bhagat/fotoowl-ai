@@ -3,7 +3,7 @@ import { RegistrationFormData, User } from '../types/user';
 
 // Production public HTTPS backend URL (deployed Render cloud service)
 // Automatically used for standalone release builds on Android and iOS
-export const DEFAULT_PRODUCTION_API_URL = 'https://fotoowl-backend.onrender.com';
+export const DEFAULT_PRODUCTION_API_URL = 'https://fotoowl-ai-backend.onrender.com';
 
 // Local Mac network IP for active development and device testing on local Wi-Fi
 export const LOCAL_DEV_API_URL = 'http://192.168.1.4:8000';
