@@ -110,11 +110,19 @@ def send_otp_email(to_email: str, otp: str, user_name: str = "") -> Tuple[bool, 
         return True, "Development mode: OTP logged to server console."
 
     try:
+        from email.utils import formatdate, make_msgid, parseaddr
+
+        # Extract clean email address for SMTP envelope
+        envelope_from = parseaddr(settings.EMAIL_FROM)[1] or settings.SMTP_USERNAME or "bhagatchetan583@gmail.com"
+
         # Create outer container for related parts (HTML + inline images)
         msg_root = MIMEMultipart("related")
-        msg_root["Subject"] = f"Your FotoOwl AI Verification Code: {otp}"
-        msg_root["From"] = settings.EMAIL_FROM
+        msg_root["Subject"] = f"FotoOwl AI Verification Code: {otp}"
+        msg_root["From"] = f"FotoOwl AI <{envelope_from}>"
+        msg_root["Reply-To"] = envelope_from
         msg_root["To"] = clean_email
+        msg_root["Date"] = formatdate(localtime=True)
+        msg_root["Message-ID"] = make_msgid(domain="gmail.com")
 
         # Alternative container for text and HTML
         msg_alt = MIMEMultipart("alternative")
@@ -150,7 +158,7 @@ def send_otp_email(to_email: str, otp: str, user_name: str = "") -> Tuple[bool, 
             server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=12)
 
         server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-        server.sendmail(settings.EMAIL_FROM, clean_email, msg_root.as_string())
+        server.sendmail(envelope_from, clean_email, msg_root.as_string())
         server.quit()
 
         logger.info(f"Branded verification email successfully delivered to {clean_email}")
