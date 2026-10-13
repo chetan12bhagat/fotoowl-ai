@@ -18,7 +18,7 @@ export interface ConfirmationDialogProps {
   confirmText?: string;
   cancelText?: string;
   confirmVariant?: 'primary' | 'danger';
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: keyof typeof Ionicons.glyphMap | null;
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
@@ -28,10 +28,10 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   visible,
   title,
   message,
-  confirmText = 'Confirm',
+  confirmText = 'Log Out',
   cancelText = 'Cancel',
-  confirmVariant = 'danger',
-  icon = 'alert-circle-outline',
+  confirmVariant = 'primary',
+  icon = null,
   onConfirm,
   onCancel,
   loading = false,

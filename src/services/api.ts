@@ -46,15 +46,90 @@ export const fetchPhotosApi = async (
       throw new ApiError('Invalid response format received from photo service.');
     }
 
-    // Map and sanitize photo records
-    return data.map((item: any) => ({
-      id: String(item.id),
-      author: String(item.author || 'Unknown Artist'),
-      width: Number(item.width) || 0,
-      height: Number(item.height) || 0,
-      url: String(item.url || ''),
-      download_url: String(item.download_url || ''),
-    }));
+    const CATEGORY_MAP: {
+      category: Photo['category'];
+      event: string;
+      album: string;
+      title: string;
+      tags: string[];
+    }[] = [
+      {
+        category: 'weddings',
+        event: 'Ananya & Rohan Royal Wedding',
+        album: 'Sangeet & Mandap Rituals',
+        title: 'Nuptial Blessings',
+        tags: ['wedding', 'mandap', 'bride', 'groom', 'ceremony'],
+      },
+      {
+        category: 'sports',
+        event: 'National Athletics Championship',
+        album: 'Track & Field Finals',
+        title: 'Sprint Finish',
+        tags: ['sports', 'athletics', 'winner', 'competition'],
+      },
+      {
+        category: 'music_festivals',
+        event: 'Echoes Live Music Festival',
+        album: 'Mainstage Performances',
+        title: 'Acoustic Euphoria',
+        tags: ['music', 'festival', 'concert', 'crowd', 'stage'],
+      },
+      {
+        category: 'corporate_events',
+        event: 'Global Tech Leadership Summit',
+        album: 'Keynote & Innovation Awards',
+        title: 'Vision 2030 Keynote',
+        tags: ['corporate', 'conference', 'summit', 'awards', 'tech'],
+      },
+      {
+        category: 'school_events',
+        event: 'Heritage International Convocation',
+        album: 'Class of 2026 Graduation',
+        title: 'Cap Toss Celebration',
+        tags: ['school', 'graduation', 'students', 'annual day'],
+      },
+      {
+        category: 'birthday_parties',
+        event: 'Leo’s 5th Safari Birthday Bash',
+        album: 'Cake Cutting & Games',
+        title: 'Birthday Magic',
+        tags: ['birthday', 'party', 'cake', 'celebration', 'family'],
+      },
+      {
+        category: 'engagements',
+        event: 'Pooja & Siddharth Engagement',
+        album: 'Sunset Ring Exchange',
+        title: 'Golden Hour Promise',
+        tags: ['engagement', 'couple', 'ring', 'pre-wedding'],
+      },
+      {
+        category: 'travel_celebrations',
+        event: 'Udaipur Lake Palace Gala',
+        album: 'Royal Heritage Retreat',
+        title: 'Palace Lanterns',
+        tags: ['travel', 'destination', 'palace', 'celebration'],
+      },
+    ];
+
+    // Map and sanitize photo records with realistic event metadata
+    return data.map((item: any) => {
+      const numId = Math.abs(parseInt(item.id, 10)) || 0;
+      const meta = CATEGORY_MAP[numId % CATEGORY_MAP.length];
+
+      return {
+        id: String(item.id),
+        author: String(item.author || 'Unknown Artist'),
+        width: Number(item.width) || 0,
+        height: Number(item.height) || 0,
+        url: String(item.url || ''),
+        download_url: String(item.download_url || ''),
+        category: meta.category,
+        title: meta.title,
+        event: meta.event,
+        album: meta.album,
+        tags: meta.tags,
+      };
+    });
   } catch (error: any) {
     clearTimeout(timeoutId);
 

@@ -2,70 +2,70 @@ import { ThemeColors } from './types';
 
 export const darkColors: ThemeColors = {
   mode: 'dark',
-  background: '#0B111E', // Deep charcoal navy foundation
-  surface: '#131D31',
-  surfaceElevated: '#1B273F',
-  card: '#152037',
-  border: '#24324F',
-  borderSubtle: '#1C273E',
+  background: '#071421', // Primary deep navy foundation
+  surface: '#0B1C2A', // Secondary dark navy
+  surfaceElevated: '#112538',
+  card: '#0D1F31',
+  border: '#1C2F45',
+  borderSubtle: '#132337',
 
-  // FotoOwl.AI Teal & Electric Cyan branding
-  primary: '#06B6D4', // Vibrant Teal
-  primaryLight: '#38BDF8',
-  primaryDark: '#0891B2',
-  primaryGradient: ['#06B6D4', '#0284C7'],
-  accent: '#22D3EE',
-  accentAmber: '#F59E0B',
+  // FotoOwl.AI Warm Golden Yellow branding
+  primary: '#FFB900', // Warm golden yellow
+  primaryLight: '#FFC837',
+  primaryDark: '#E5A600',
+  primaryGradient: ['#FFB900', '#F59E0B'],
+  accent: '#FFB900',
+  accentAmber: '#FFB900',
 
-  textPrimary: '#F1F5F9',
+  textPrimary: '#FFFFFF',
   textSecondary: '#94A3B8',
   textMuted: '#64748B',
-  textInverse: '#0B111E',
+  textInverse: '#071421',
 
   success: '#10B981',
-  error: '#F43F5E',
+  error: '#EF4444',
   warning: '#F59E0B',
   info: '#38BDF8',
 
-  inputBackground: '#111A2C',
-  inputBorder: '#24324F',
-  inputBorderFocused: '#06B6D4',
+  inputBackground: '#0B1C2A',
+  inputBorder: '#1C2F45',
+  inputBorderFocused: '#FFB900',
   placeholderText: '#64748B',
-  disabled: '#334155',
-  overlay: 'rgba(5, 8, 15, 0.75)',
+  disabled: '#1E293B',
+  overlay: 'rgba(7, 20, 33, 0.85)',
 };
 
 export const lightColors: ThemeColors = {
   mode: 'light',
-  background: '#F8FAFC', // Soft neutral background
+  background: '#FFFFFF', // Main light background
   surface: '#FFFFFF',
-  surfaceElevated: '#FFFFFF',
+  surfaceElevated: '#F7F9FC', // Secondary light background
   card: '#FFFFFF',
-  border: '#E2E8F0',
-  borderSubtle: '#EDF2F7',
+  border: '#E4E7EC', // Clean light border
+  borderSubtle: '#F2F4F7',
 
-  // FotoOwl.AI Teal
-  primary: '#0891B2',
-  primaryLight: '#06B6D4',
-  primaryDark: '#0E7490',
-  primaryGradient: ['#0891B2', '#0284C7'],
-  accent: '#06B6D4',
-  accentAmber: '#D97706',
+  // FotoOwl.AI Warm Golden Yellow
+  primary: '#FFB900',
+  primaryLight: '#FFC837',
+  primaryDark: '#E5A600',
+  primaryGradient: ['#FFB900', '#F59E0B'],
+  accent: '#FFB900',
+  accentAmber: '#FFB900',
 
-  textPrimary: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#94A3B8',
+  textPrimary: '#101828',
+  textSecondary: '#667085',
+  textMuted: '#98A2B3',
   textInverse: '#FFFFFF',
 
-  success: '#059669',
-  error: '#E11D48',
-  warning: '#D97706',
-  info: '#0284C7',
+  success: '#12B76A',
+  error: '#F04438',
+  warning: '#F79009',
+  info: '#0BA5EC',
 
-  inputBackground: '#F1F5F9',
-  inputBorder: '#CBD5E1',
-  inputBorderFocused: '#0891B2',
-  placeholderText: '#94A3B8',
-  disabled: '#E2E8F0',
-  overlay: 'rgba(15, 23, 42, 0.6)',
+  inputBackground: '#FFFFFF',
+  inputBorder: '#E4E7EC',
+  inputBorderFocused: '#FFB900',
+  placeholderText: '#98A2B3',
+  disabled: '#F2F4F7',
+  overlay: 'rgba(7, 20, 33, 0.65)',
 };

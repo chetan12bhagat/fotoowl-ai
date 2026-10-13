@@ -153,10 +153,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
-    borderRadius: 10,
+    height: 50,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
   },
   leftIcon: {
     marginRight: 8,

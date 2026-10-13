@@ -12,6 +12,8 @@ export interface BrandedHeaderProps {
   onBackPress?: () => void;
   showLogo?: boolean;
   rightComponent?: React.ReactNode;
+  showNotificationIcon?: boolean;
+  onNotificationPress?: () => void;
 }
 
 export const BrandedHeader: React.FC<BrandedHeaderProps> = ({
@@ -21,8 +23,10 @@ export const BrandedHeader: React.FC<BrandedHeaderProps> = ({
   onBackPress,
   showLogo = true,
   rightComponent,
+  showNotificationIcon = false,
+  onNotificationPress,
 }) => {
-  const { theme, isDark, toggleTheme } = useTheme();
+  const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
@@ -31,7 +35,7 @@ export const BrandedHeader: React.FC<BrandedHeaderProps> = ({
         styles.container,
         {
           paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 12 : 8),
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.background,
           borderBottomColor: theme.colors.borderSubtle,
         },
       ]}
@@ -39,7 +43,7 @@ export const BrandedHeader: React.FC<BrandedHeaderProps> = ({
       <View style={styles.headerRow}>
         {/* Left Action / Back Button or Logo */}
         <View style={styles.leftSection}>
-          {showBack ? (
+          {showBack && (
             <TouchableOpacity
               onPress={onBackPress}
               style={[
@@ -53,14 +57,16 @@ export const BrandedHeader: React.FC<BrandedHeaderProps> = ({
               accessibilityLabel="Go back"
             >
               <Ionicons
-                name="arrow-back"
-                size={20}
+                name="chevron-back"
+                size={22}
                 color={theme.colors.textPrimary}
               />
             </TouchableOpacity>
-          ) : showLogo ? (
+          )}
+
+          {showLogo && (
             <BrandLogo size="small" horizontal />
-          ) : null}
+          )}
 
           {title && (
             <View style={styles.titleWrapper}>
@@ -92,9 +98,9 @@ export const BrandedHeader: React.FC<BrandedHeaderProps> = ({
         <View style={styles.rightSection}>
           {rightComponent ? (
             rightComponent
-          ) : (
+          ) : showNotificationIcon ? (
             <TouchableOpacity
-              onPress={toggleTheme}
+              onPress={onNotificationPress}
               style={[
                 styles.iconButton,
                 {
@@ -103,15 +109,16 @@ export const BrandedHeader: React.FC<BrandedHeaderProps> = ({
                 },
               ]}
               activeOpacity={0.7}
-              accessibilityLabel={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+              accessibilityLabel="Notifications"
             >
               <Ionicons
-                name={isDark ? 'sunny-outline' : 'moon-outline'}
-                size={18}
-                color={isDark ? '#F59E0B' : theme.colors.primary}
+                name="notifications-outline"
+                size={20}
+                color={theme.colors.textPrimary}
               />
+              <View style={styles.notificationBadge} />
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
       </View>
     </View>
@@ -161,5 +168,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#FFB900',
   },
 });

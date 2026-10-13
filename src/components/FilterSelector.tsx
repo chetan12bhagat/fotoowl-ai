@@ -17,9 +17,9 @@ export const FilterSelector: React.FC<FilterSelectorProps> = ({
   const { theme } = useTheme();
 
   const options: { id: PhotoFilter; label: string }[] = [
-    { id: 'all', label: allCount !== undefined ? `All (${allCount})` : 'All Images' },
-    { id: 'A-M', label: 'Authors A–M' },
-    { id: 'N-Z', label: 'Authors N–Z' },
+    { id: 'all', label: 'All' },
+    { id: 'A-M', label: 'A - M' },
+    { id: 'N-Z', label: 'N - Z' },
   ];
 
   return (
@@ -36,10 +36,10 @@ export const FilterSelector: React.FC<FilterSelectorProps> = ({
               styles.pill,
               {
                 backgroundColor: isActive
-                  ? theme.colors.primary
-                  : theme.colors.surfaceElevated,
+                  ? '#FFB900'
+                  : theme.colors.surface,
                 borderColor: isActive
-                  ? theme.colors.primary
+                  ? '#FFB900'
                   : theme.colors.border,
               },
             ]}
@@ -51,8 +51,8 @@ export const FilterSelector: React.FC<FilterSelectorProps> = ({
               style={[
                 styles.label,
                 {
-                  color: isActive ? '#FFFFFF' : theme.colors.textSecondary,
-                  fontWeight: isActive ? '700' : '500',
+                  color: isActive ? '#071421' : theme.colors.textSecondary,
+                  fontWeight: isActive ? '800' : '600',
                 },
               ]}
             >
@@ -69,19 +69,21 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginVertical: 10,
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 6,
   },
   pill: {
     paddingVertical: 7,
-    paddingHorizontal: 14,
+    paddingHorizontal: 18,
     borderRadius: 20,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 56,
   },
   label: {
-    fontSize: 12,
+    fontSize: 13,
     letterSpacing: -0.1,
   },
 });

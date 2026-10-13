@@ -85,7 +85,9 @@ export const updateUserProfileInRegistry = async (
   try {
     const users = await getRegisteredUsers();
     const updatedList = users.map((u) =>
-      u.email.toLowerCase() === updatedUser.email.toLowerCase() ? updatedUser : u
+      u.id === updatedUser.id || u.email.toLowerCase() === updatedUser.email.toLowerCase()
+        ? updatedUser
+        : u
     );
     await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedList));
   } catch (error) {
@@ -139,5 +141,60 @@ export const saveTheme = async (mode: ThemeMode): Promise<void> => {
   } catch (error) {
     console.error('[Storage] Error saving theme mode:', error);
     throw error;
+  }
+};
+
+// ------------------------------------------------------------
+// User Account Deletion & Settings Preferences Persistence
+// ------------------------------------------------------------
+
+export const deleteRegisteredUserFromRegistry = async (userId: string): Promise<void> => {
+  try {
+    const users = await getRegisteredUsers();
+    const updatedList = users.filter((u) => u.id !== userId);
+    await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedList));
+  } catch (error) {
+    console.error('[Storage] Error deleting user from registry:', error);
+    throw error;
+  }
+};
+
+const SETTINGS_KEYS = {
+  NOTIFICATIONS: '@fotoowl_notifications_enabled',
+  LANGUAGE: '@fotoowl_selected_language',
+  AUTO_CURATION: '@fotoowl_auto_curation',
+};
+
+export const getSavedNotificationsEnabled = async (): Promise<boolean> => {
+  try {
+    const raw = await AsyncStorage.getItem(SETTINGS_KEYS.NOTIFICATIONS);
+    return raw !== null ? JSON.parse(raw) : true;
+  } catch {
+    return true;
+  }
+};
+
+export const saveNotificationsEnabled = async (enabled: boolean): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(SETTINGS_KEYS.NOTIFICATIONS, JSON.stringify(enabled));
+  } catch (error) {
+    console.error('[Storage] Error saving notifications preference:', error);
+  }
+};
+
+export const getSavedLanguage = async (): Promise<string> => {
+  try {
+    const raw = await AsyncStorage.getItem(SETTINGS_KEYS.LANGUAGE);
+    return raw || 'English (US)';
+  } catch {
+    return 'English (US)';
+  }
+};
+
+export const saveLanguage = async (lang: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(SETTINGS_KEYS.LANGUAGE, lang);
+  } catch (error) {
+    console.error('[Storage] Error saving language preference:', error);
   }
 };

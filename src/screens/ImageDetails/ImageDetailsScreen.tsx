@@ -1,285 +1,283 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   Image,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Modal,
   Alert,
   Dimensions,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
-import { BrandedHeader } from '../../components/BrandedHeader';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { DownloadProgressModal } from '../../components/DownloadProgressModal';
+import { ImageShareSheetModal } from '../../components/ImageShareSheetModal';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useTheme } from '../../hooks/useTheme';
 import { downloadPhotoToGallery, sharePhoto } from '../../services/media';
-import { formatDimensions } from '../../utils/formatters';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ImageDetails'>;
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export const ImageDetailsScreen: React.FC<Props> = ({ route, navigation }) => {
+  const insets = useSafeAreaInsets();
   const { photo } = route.params;
   const { theme } = useTheme();
   const { isFavorite, toggleFavorite } = useFavorites();
 
   const [imageLoading, setImageLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
-  const [sharing, setSharing] = useState(false);
+  const [downloadModalVisible, setDownloadModalVisible] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadComplete, setDownloadComplete] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
   const [fullViewerVisible, setFullViewerVisible] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(
-    null
-  );
+
+  const downloadIntervalRef = useRef<any>(null);
 
   const favorited = isFavorite(photo.id);
 
   // Full-size resolution URL
   const highResUrl =
-    photo.download_url || `https://picsum.photos/id/${photo.id}/${photo.width}/${photo.height}`;
+    photo.download_url ||
+    `https://picsum.photos/id/${photo.id}/${photo.width || 1200}/${photo.height || 800}`;
 
-  const handleDownload = async () => {
-    setStatusMessage(null);
-    setDownloading(true);
+  // Photographer initials for avatar
+  const initials = photo.author
+    ? photo.author
+        .split(' ')
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : 'FO';
+
+  const handleStartDownload = async () => {
+    setDownloadProgress(10);
+    setDownloadComplete(false);
+    setDownloadModalVisible(true);
+
+    // Smooth realistic progress animation
+    let currentProg = 10;
+    downloadIntervalRef.current = setInterval(() => {
+      currentProg += Math.floor(Math.random() * 15) + 12;
+      if (currentProg >= 90) {
+        clearInterval(downloadIntervalRef.current);
+        setDownloadProgress(92);
+      } else {
+        setDownloadProgress(currentProg);
+      }
+    }, 250);
 
     try {
       const result = await downloadPhotoToGallery(highResUrl, photo.id);
-      setDownloading(false);
+      clearInterval(downloadIntervalRef.current);
+      setDownloadProgress(100);
+      setDownloadComplete(true);
 
-      if (result.success) {
-        setStatusMessage({ text: result.message, isError: false });
-        Alert.alert('Download Complete', result.message, [{ text: 'OK' }]);
-      } else {
-        setStatusMessage({ text: result.message, isError: true });
-        Alert.alert('Download Notice', result.message, [{ text: 'OK' }]);
-      }
+      setTimeout(() => {
+        setDownloadModalVisible(false);
+        Alert.alert(
+          result.success ? 'Saved to Gallery' : 'Download Notice',
+          result.message,
+          [{ text: 'OK' }]
+        );
+      }, 700);
     } catch (err: any) {
-      setDownloading(false);
-      const msg = err?.message || 'Failed to download photo.';
-      setStatusMessage({ text: msg, isError: true });
-      Alert.alert('Error', msg);
+      clearInterval(downloadIntervalRef.current);
+      setDownloadModalVisible(false);
+      Alert.alert('Download Error', err?.message || 'Could not download photo.');
     }
   };
 
-  const handleShare = async () => {
-    setSharing(true);
-    const result = await sharePhoto(highResUrl, photo.author);
-    setSharing(false);
-
-    if (result.message) {
-      Alert.alert('Share', result.message);
+  const handleCancelDownload = () => {
+    if (downloadIntervalRef.current) {
+      clearInterval(downloadIntervalRef.current);
     }
+    setDownloadModalVisible(false);
+    setDownloadProgress(0);
+  };
+
+  const handleOpenShareSheet = () => {
+    setShareModalVisible(true);
+  };
+
+  const handleNativeShare = async () => {
+    setShareModalVisible(false);
+    await sharePhoto(highResUrl, photo.author);
+  };
+
+  const handleSaveFromShareSheet = async () => {
+    setShareModalVisible(false);
+    handleStartDownload();
+  };
+
+  const handleAddToSharedAlbum = () => {
+    setShareModalVisible(false);
+    Alert.alert(
+      'Shared Album',
+      `"Photo ID: ${photo.id}" added to your FotoOwl.AI Event Album.`,
+      [{ text: 'Done' }]
+    );
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Branded Header with Back Navigation */}
-      <BrandedHeader
-        title={`Photo #${photo.id}`}
-        subtitle={`By ${photo.author}`}
-        showBack
-        onBackPress={() => navigation.goBack()}
-        rightComponent={
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent />
+
+      {/* Edge-to-edge photo display matching Reference Image 1 */}
+      <TouchableOpacity
+        activeOpacity={0.95}
+        onPress={() => setFullViewerVisible(true)}
+        style={styles.heroImageContainer}
+      >
+        {imageLoading && (
+          <View style={styles.imageLoader}>
+            <ActivityIndicator size="large" color="#FFB900" />
+          </View>
+        )}
+        <Image
+          source={{ uri: highResUrl }}
+          style={styles.heroImage}
+          resizeMode="cover"
+          onLoadEnd={() => setImageLoading(false)}
+        />
+      </TouchableOpacity>
+
+      {/* Floating Top Header Navigation Bar matching Reference Image 1 */}
+      <View
+        style={[
+          styles.topBar,
+          {
+            paddingTop: Math.max(insets.top + 10, 36),
+          },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.circleActionBtn}
+          activeOpacity={0.7}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        <View style={styles.topRightActions}>
+          <TouchableOpacity
+            onPress={handleOpenShareSheet}
+            style={styles.circleActionBtn}
+            activeOpacity={0.7}
+            accessibilityLabel="Share photo"
+          >
+            <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => toggleFavorite(photo)}
             style={[
-              styles.headerFavoriteBtn,
-              {
-                backgroundColor: favorited
-                  ? 'rgba(239, 68, 68, 0.15)'
-                  : theme.colors.surfaceElevated,
-                borderColor: favorited ? theme.colors.error : theme.colors.border,
-              },
+              styles.circleActionBtn,
+              favorited && styles.circleActionBtnActive,
             ]}
-            accessibilityLabel={favorited ? 'Remove from favorites' : 'Add to favorites'}
+            activeOpacity={0.7}
+            accessibilityLabel={favorited ? 'Remove favorite' : 'Add favorite'}
           >
             <Ionicons
               name={favorited ? 'heart' : 'heart-outline'}
               size={20}
-              color={favorited ? theme.colors.error : theme.colors.textPrimary}
+              color={favorited ? '#FFB900' : '#FFFFFF'}
             />
           </TouchableOpacity>
-        }
-      />
+        </View>
+      </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      {/* Bottom Floating Metadata Card matching Reference Image 1 */}
+      <View
+        style={[
+          styles.bottomCard,
+          {
+            paddingBottom: Math.max(insets.bottom + 16, 28),
+          },
+        ]}
       >
-        {/* Status Message Notification Banner */}
-        {statusMessage && (
-          <View
-            style={[
-              styles.statusBanner,
-              {
-                backgroundColor: statusMessage.isError
-                  ? 'rgba(244, 63, 94, 0.12)'
-                  : 'rgba(16, 185, 129, 0.12)',
-                borderColor: statusMessage.isError
-                  ? theme.colors.error
-                  : theme.colors.success,
-              },
-            ]}
-          >
-            <Ionicons
-              name={statusMessage.isError ? 'alert-circle' : 'checkmark-circle'}
-              size={18}
-              color={statusMessage.isError ? theme.colors.error : theme.colors.success}
-              style={{ marginRight: 8 }}
-            />
-            <Text
-              style={[
-                styles.statusText,
-                {
-                  color: statusMessage.isError
-                    ? theme.colors.error
-                    : theme.colors.success,
-                },
-              ]}
-            >
-              {statusMessage.text}
-            </Text>
+        {/* Photographer Info Row */}
+        <View style={styles.authorRow}>
+          <View style={styles.authorAvatarCircle}>
+            <Text style={styles.authorAvatarText}>{initials}</Text>
           </View>
-        )}
 
-        {/* Hero Photo Container (Tap to open full-screen viewer) */}
-        <TouchableOpacity
-          activeOpacity={0.92}
-          onPress={() => setFullViewerVisible(true)}
-          style={[
-            styles.imageWrapper,
-            {
-              backgroundColor: theme.colors.surfaceElevated,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          {imageLoading && (
-            <View style={styles.imageLoader}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={[styles.loadingText, { color: theme.colors.textMuted }]}>
-                Rendering high-res media...
-              </Text>
-            </View>
-          )}
-
-          <Image
-            source={{ uri: highResUrl }}
-            style={styles.heroImage}
-            resizeMode="cover"
-            onLoadEnd={() => setImageLoading(false)}
-          />
-
-          <View style={styles.expandHint}>
-            <Ionicons name="expand-outline" size={14} color="#FFFFFF" />
-            <Text style={styles.expandHintText}>Tap for Full Screen</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Details Card */}
-        <View
-          style={[
-            styles.detailsCard,
-            {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <View style={styles.authorSection}>
-            <View style={styles.authorBadge}>
-              <Ionicons name="person" size={14} color={theme.colors.primary} />
-              <Text style={[styles.authorLabel, { color: theme.colors.primary }]}>
-                CREATOR
-              </Text>
-            </View>
-            <Text
-              style={[styles.authorName, { color: theme.colors.textPrimary }]}
-            >
+          <View style={styles.authorTextCol}>
+            <Text style={styles.authorIdText}>ID: {photo.id}</Text>
+            <Text style={styles.authorNameText} numberOfLines={1}>
               {photo.author}
             </Text>
           </View>
 
-          <View style={[styles.divider, { backgroundColor: theme.colors.borderSubtle }]} />
-
-          {/* Technical Metadata Grid */}
-          <View style={styles.metadataGrid}>
-            <View style={styles.metaItem}>
-              <Text style={[styles.metaLabel, { color: theme.colors.textMuted }]}>
-                Asset ID
-              </Text>
-              <Text style={[styles.metaValue, { color: theme.colors.textPrimary }]}>
-                #{photo.id}
-              </Text>
-            </View>
-
-            <View style={styles.metaItem}>
-              <Text style={[styles.metaLabel, { color: theme.colors.textMuted }]}>
-                Resolution
-              </Text>
-              <Text style={[styles.metaValue, { color: theme.colors.textPrimary }]}>
-                {formatDimensions(photo.width, photo.height)}
-              </Text>
-            </View>
-
-            <View style={styles.metaItem}>
-              <Text style={[styles.metaLabel, { color: theme.colors.textMuted }]}>
-                Platform
-              </Text>
-              <Text style={[styles.metaValue, { color: theme.colors.textPrimary }]}>
-                Picsum / FotoOwl.AI
-              </Text>
-            </View>
-
-            <View style={styles.metaItem}>
-              <Text style={[styles.metaLabel, { color: theme.colors.textMuted }]}>
-                Format
-              </Text>
-              <Text style={[styles.metaValue, { color: theme.colors.textPrimary }]}>
-                JPEG Full Color
-              </Text>
-            </View>
-          </View>
+          <TouchableOpacity
+            onPress={() => toggleFavorite(photo)}
+            style={styles.heartMiniBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={favorited ? 'heart' : 'heart-outline'}
+              size={22}
+              color={favorited ? '#FFB900' : '#FFFFFF'}
+            />
+          </TouchableOpacity>
         </View>
 
-        {/* Action Buttons: Download & Share */}
-        <View style={styles.actionSection}>
+        {/* Buttons Row: Download & Share */}
+        <View style={styles.buttonsContainer}>
+          {/* Prominent Gold Download Button matching Reference Image 1 */}
           <PrimaryButton
-            title="Download to Gallery"
-            onPress={handleDownload}
-            loading={downloading}
+            title="Download"
+            onPress={handleStartDownload}
             icon="download-outline"
-            style={styles.actionBtn}
+            style={styles.downloadButton}
+            textStyle={styles.downloadButtonText}
           />
 
-          <View style={styles.secondaryActions}>
-            <PrimaryButton
-              title="Share Photo"
-              onPress={handleShare}
-              loading={sharing}
-              icon="share-social-outline"
-              variant="secondary"
-              style={[styles.actionBtn, { flex: 1 }]}
+          {/* Secondary Share Button matching Reference Image 1 */}
+          <TouchableOpacity
+            onPress={handleOpenShareSheet}
+            activeOpacity={0.8}
+            style={styles.secondaryShareBtn}
+          >
+            <Ionicons
+              name="share-outline"
+              size={18}
+              color="#FFFFFF"
+              style={{ marginRight: 8 }}
             />
-
-            <PrimaryButton
-              title={favorited ? 'Favorited' : 'Favorite'}
-              onPress={() => toggleFavorite(photo)}
-              icon={favorited ? 'heart' : 'heart-outline'}
-              variant={favorited ? 'outline' : 'secondary'}
-              style={[styles.actionBtn, { flex: 1 }]}
-            />
-          </View>
+            <Text style={styles.secondaryShareBtnText}>Share</Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
 
-      {/* Full-Screen Image Modal Viewer */}
+      {/* Download Progress Modal matching Reference Image 1 */}
+      <DownloadProgressModal
+        visible={downloadModalVisible}
+        progress={downloadProgress}
+        isComplete={downloadComplete}
+        onCancel={handleCancelDownload}
+      />
+
+      {/* Image Share Sheet Modal matching Reference Image 1 */}
+      <ImageShareSheetModal
+        visible={shareModalVisible}
+        photo={photo}
+        onClose={() => setShareModalVisible(false)}
+        onNativeShare={handleNativeShare}
+        onSaveToPhotos={handleSaveFromShareSheet}
+        onAddToSharedAlbum={handleAddToSharedAlbum}
+      />
+
+      {/* Full Screen Image Pinch/Zoom Viewer Modal */}
       <Modal
         visible={fullViewerVisible}
         transparent={false}
@@ -287,31 +285,24 @@ export const ImageDetailsScreen: React.FC<Props> = ({ route, navigation }) => {
         onRequestClose={() => setFullViewerVisible(false)}
       >
         <View style={styles.fullViewerContainer}>
-          {/* Top Floating Close Bar */}
-          <View style={styles.fullViewerHeader}>
+          <View style={[styles.fullViewerHeader, { paddingTop: Math.max(insets.top + 8, 24) }]}>
             <TouchableOpacity
               onPress={() => setFullViewerVisible(false)}
-              style={styles.closeFullViewerBtn}
-              accessibilityLabel="Close full screen view"
+              style={styles.circleActionBtn}
             >
               <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>
-
             <Text style={styles.fullViewerTitle}>
               {photo.author} • #{photo.id}
             </Text>
-
             <TouchableOpacity
-              onPress={handleDownload}
-              style={styles.closeFullViewerBtn}
-              accessibilityLabel="Download image"
+              onPress={handleStartDownload}
+              style={styles.circleActionBtn}
             >
               <Ionicons name="download-outline" size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
-
-          {/* Full-Screen Centered Image */}
-          <View style={styles.fullImageContainer}>
+          <View style={styles.fullImageWrapper}>
             <Image
               source={{ uri: highResUrl }}
               style={styles.fullImage}
@@ -327,130 +318,136 @@ export const ImageDetailsScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#071421',
   },
-  headerFavoriteBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  statusBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginBottom: 16,
-  },
-  statusText: {
-    fontSize: 13,
-    fontWeight: '600',
-    flex: 1,
-  },
-  imageWrapper: {
-    width: '100%',
-    height: 280,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  imageLoader: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 12,
+  heroImageContainer: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
   heroImage: {
     width: '100%',
     height: '100%',
   },
-  expandHint: {
+  imageLoader: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#071421',
+    zIndex: 2,
+  },
+  topBar: {
     position: 'absolute',
-    bottom: 12,
-    right: 12,
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(11, 17, 30, 0.75)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    gap: 4,
+    paddingHorizontal: 16,
+    zIndex: 10,
   },
-  expandHintText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  detailsCard: {
-    borderRadius: 16,
+  circleActionBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(7, 20, 33, 0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    padding: 18,
-    marginTop: 16,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  authorSection: {
-    marginBottom: 12,
+  circleActionBtnActive: {
+    borderColor: '#FFB900',
   },
-  authorBadge: {
+  topRightActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  bottomCard: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(7, 20, 33, 0.92)',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#1C2F45',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    zIndex: 10,
+  },
+  authorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  authorLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+  authorAvatarCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#112538',
+    borderWidth: 1.5,
+    borderColor: '#FFB900',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
-  authorName: {
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+  authorAvatarText: {
+    color: '#FFB900',
+    fontSize: 14,
+    fontWeight: '800',
   },
-  divider: {
-    height: 1,
-    marginVertical: 12,
+  authorTextCol: {
+    flex: 1,
   },
-  metadataGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    rowGap: 12,
-  },
-  metaItem: {
-    width: '50%',
-  },
-  metaLabel: {
+  authorIdText: {
+    color: '#94A3B8',
     fontSize: 12,
+    fontWeight: '600',
     marginBottom: 2,
   },
-  metaValue: {
-    fontSize: 14,
-    fontWeight: '600',
+  authorNameText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
-  actionSection: {
-    marginTop: 20,
+  heartMiniBtn: {
+    padding: 6,
+  },
+  buttonsContainer: {
     gap: 12,
   },
-  actionBtn: {
+  downloadButton: {
     width: '100%',
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: '#FFB900',
   },
-  secondaryActions: {
+  downloadButtonText: {
+    color: '#071421',
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  secondaryShareBtn: {
+    width: '100%',
+    height: 50,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#1C2F45',
+    backgroundColor: 'rgba(11, 28, 42, 0.8)',
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryShareBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   fullViewerContainer: {
     flex: 1,
@@ -461,17 +458,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 48,
     paddingBottom: 16,
     backgroundColor: 'rgba(0,0,0,0.8)',
-  },
-  closeFullViewerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   fullViewerTitle: {
     color: '#FFFFFF',
@@ -481,7 +469,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 8,
   },
-  fullImageContainer: {
+  fullImageWrapper: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',

@@ -97,4 +97,97 @@ describe('Photo Filtering and Search Utilities', () => {
     filterPhotos(samplePhotos, 'paul', 'N-Z');
     expect(samplePhotos).toEqual(cloned);
   });
+
+  it('filters photos by photo ID including "id: X" or "#X" syntax', () => {
+    const idResults = filterPhotos(samplePhotos, '3', 'all');
+    expect(idResults.length).toBe(1);
+    expect(idResults[0].id).toBe('3');
+
+    const prefixResults = filterPhotos(samplePhotos, 'id: 2', 'all');
+    expect(prefixResults.length).toBe(1);
+    expect(prefixResults[0].id).toBe('2');
+
+    const hashResults = filterPhotos(samplePhotos, '#4', 'all');
+    expect(hashResults.length).toBe(1);
+    expect(hashResults[0].id).toBe('4');
+  });
+
+  it('filters photos by title, event, album, and tags when available', () => {
+    const richPhotos: Photo[] = [
+      {
+        id: '10',
+        author: 'Sarah Jenkins',
+        width: 3000,
+        height: 2000,
+        url: 'https://unsplash.com/photos/wedding-first-dance',
+        download_url: 'https://picsum.photos/id/10/3000/2000',
+        title: 'Sunset Nuptials',
+        event: 'Emma & Liam Wedding',
+        album: 'Ceremony Highlights',
+        tags: ['reception', 'dance', 'lights'],
+      },
+      {
+        id: '11',
+        author: 'David Miller',
+        width: 3000,
+        height: 2000,
+        url: 'https://unsplash.com/photos/mountain-portrait',
+        download_url: 'https://picsum.photos/id/11/3000/2000',
+        title: 'Alpine Vista',
+        event: 'Outdoor Reception',
+        album: 'Portraits',
+        tags: ['mountains', 'couple'],
+      },
+    ];
+
+    expect(filterPhotos(richPhotos, 'nuptials', 'all')).toHaveLength(1);
+    expect(filterPhotos(richPhotos, 'wedding', 'all')).toHaveLength(1);
+    expect(filterPhotos(richPhotos, 'ceremony', 'all')).toHaveLength(1);
+    expect(filterPhotos(richPhotos, 'reception', 'all')).toHaveLength(2);
+  });
+
+  it('filters photos by category and integrates with search queries', () => {
+    const categorizedPhotos: Photo[] = [
+      {
+        id: '1',
+        author: 'Priya Sharma',
+        width: 3000,
+        height: 2000,
+        url: 'https://unsplash.com/wedding-1',
+        download_url: 'https://picsum.photos/id/1/3000/2000',
+        category: 'weddings',
+      },
+      {
+        id: '2',
+        author: 'Marcus Vance',
+        width: 3000,
+        height: 2000,
+        url: 'https://unsplash.com/sports-1',
+        download_url: 'https://picsum.photos/id/2/3000/2000',
+        category: 'sports',
+      },
+      {
+        id: '3',
+        author: 'Priya Sharma',
+        width: 3000,
+        height: 2000,
+        url: 'https://unsplash.com/sports-2',
+        download_url: 'https://picsum.photos/id/3/3000/2000',
+        category: 'sports',
+      },
+    ];
+
+    // Filter by category
+    expect(filterPhotos(categorizedPhotos, '', 'all', 'weddings')).toHaveLength(1);
+    expect(filterPhotos(categorizedPhotos, '', 'all', 'sports')).toHaveLength(2);
+
+    // Combined category and search query
+    const priyaSports = filterPhotos(categorizedPhotos, 'Priya', 'all', 'sports');
+    expect(priyaSports).toHaveLength(1);
+    expect(priyaSports[0].id).toBe('3');
+
+    // Return all when category is 'all'
+    expect(filterPhotos(categorizedPhotos, '', 'all', 'all')).toHaveLength(3);
+  });
 });
+

@@ -87,42 +87,27 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onPress, width }) =
           style={[
             styles.favoriteButton,
             {
-              backgroundColor: favorited ? 'rgba(239, 68, 68, 0.9)' : 'rgba(15, 23, 42, 0.65)',
+              backgroundColor: favorited ? '#FFB900' : 'rgba(7, 20, 33, 0.65)',
             },
           ]}
           accessibilityLabel={favorited ? 'Remove from favorites' : 'Add to favorites'}
         >
           <Ionicons
             name={favorited ? 'heart' : 'heart-outline'}
-            size={18}
-            color="#FFFFFF"
+            size={16}
+            color={favorited ? '#071421' : '#FFFFFF'}
           />
         </TouchableOpacity>
 
-        {/* Photo ID Badge */}
-        <View style={styles.idBadge}>
-          <Text style={styles.idBadgeText}>#{photo.id}</Text>
-        </View>
-      </View>
+        {/* Gradient Scrim on Image */}
+        <View style={styles.imageOverlayGradient} />
 
-      {/* Card Metadata Footer */}
-      <View style={styles.infoRow}>
-        <View style={styles.authorSection}>
-          <Text
-            style={[styles.authorName, { color: theme.colors.textPrimary }]}
-            numberOfLines={1}
-          >
+        {/* Overlay Metadata on Image matching Reference Image 1 */}
+        <View style={styles.metaOverlay}>
+          <Text style={styles.photoIdText}>ID: {photo.id}</Text>
+          <Text style={styles.authorOverlayText} numberOfLines={1}>
             {photo.author}
           </Text>
-          <View style={styles.metaRow}>
-            <Ionicons name="camera-outline" size={12} color={theme.colors.textMuted} />
-            <Text
-              style={[styles.metaText, { color: theme.colors.textMuted }]}
-              numberOfLines={1}
-            >
-              FotoOwl Studio • {photo.width}×{photo.height}
-            </Text>
-          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -134,16 +119,16 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     overflow: 'hidden',
-    marginBottom: 14,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
     elevation: 3,
   },
   imageContainer: {
     width: '100%',
-    height: 190,
+    height: 180,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -168,54 +153,46 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 3,
     elevation: 4,
   },
-  idBadge: {
+  imageOverlayGradient: {
     position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 64,
+    backgroundColor: 'rgba(7, 20, 33, 0.78)',
+  },
+  metaOverlay: {
+    position: 'absolute',
+    left: 10,
+    right: 10,
     bottom: 8,
-    left: 8,
-    backgroundColor: 'rgba(11, 17, 30, 0.75)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    zIndex: 5,
   },
-  idBadgeText: {
-    color: '#F1F5F9',
-    fontSize: 11,
+  photoIdText: {
+    color: '#94A3B8',
+    fontSize: 10,
     fontWeight: '600',
+    letterSpacing: 0.3,
+    marginBottom: 1,
   },
-  infoRow: {
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  authorSection: {
-    flex: 1,
-  },
-  authorName: {
-    fontSize: 14,
+  authorOverlayText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: -0.2,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 11,
   },
 });

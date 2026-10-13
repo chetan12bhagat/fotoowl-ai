@@ -6,6 +6,10 @@ import { RootStackParamList } from '../types/navigation';
 import { AuthNavigator } from './AuthNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
 import { ImageDetailsScreen } from '../screens/ImageDetails/ImageDetailsScreen';
+import { MemoryDetailsScreen } from '../screens/MemoryDetails/MemoryDetailsScreen';
+import { PersonProfileScreen } from '../screens/PersonProfile/PersonProfileScreen';
+import { ProfileScreen } from '../screens/Profile/ProfileScreen';
+import { LogoOnlyLoadingScreen } from '../components/LogoOnlyLoadingScreen';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 
@@ -29,11 +33,7 @@ export const AppNavigator: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
+    return <LogoOnlyLoadingScreen backgroundColor={theme.colors.background} />;
   }
 
   return (
@@ -59,6 +59,27 @@ export const AppNavigator: React.FC = () => {
             <RootStack.Screen
               name="ImageDetails"
               component={ImageDetailsScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <RootStack.Screen
+              name="MemoryDetails"
+              component={MemoryDetailsScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <RootStack.Screen
+              name="PersonProfile"
+              component={PersonProfileScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <RootStack.Screen
+              name="Settings"
+              component={ProfileScreen}
               options={{
                 animation: 'slide_from_right',
               }}

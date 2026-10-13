@@ -10,6 +10,8 @@ export interface User {
   city: string;
   password?: string;
   avatarId?: string;
+  avatarUri?: string;
+  isVerified?: boolean;
   createdAt: string;
   updatedAt?: string;
 }
@@ -38,4 +40,5 @@ export interface ProfileUpdateData {
   address: string;
   city: string;
   avatarId?: string;
+  avatarUri?: string | null;
 }

@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 
 export interface BrandLogoProps {
@@ -8,139 +7,194 @@ export interface BrandLogoProps {
   showTagline?: boolean;
   taglineText?: string;
   horizontal?: boolean;
+  themeOverride?: 'light' | 'dark';
 }
 
 /**
- * Reusable FotoOwl.AI Brand Logo Component.
- * Features a modern, geometric owl emblem combining camera optics and AI precision.
- * (Note: Placeholder vector brand emblem for FotoOwl.AI until official company vector is supplied).
+ * Official FotoOwl.AI Brand Logo Component matching Reference Images 1 & 2.
+ * Renders "FOTO OWL" with the iconic owl-eye emblem connecting the Os,
+ * with golden accents and "AI EVENT INNOVATIONS" tagline.
  */
 export const BrandLogo: React.FC<BrandLogoProps> = ({
   size = 'medium',
-  showTagline = false,
-  taglineText = 'Every Moment, Beautifully Captured',
+  showTagline = true,
+  taglineText = 'AI EVENT INNOVATIONS',
   horizontal = false,
+  themeOverride,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark: systemIsDark } = useTheme();
+  const isDark = themeOverride ? themeOverride === 'dark' : systemIsDark;
+
+  const fontColor = isDark ? '#FFFFFF' : '#071421';
+  const goldColor = '#FFB900';
 
   // Dimension scaling
-  const dimensions = {
-    small: { iconContainer: 34, iconSize: 18, titleSize: 16, tagSize: 10, pupilSize: 5 },
-    medium: { iconContainer: 50, iconSize: 26, titleSize: 22, tagSize: 12, pupilSize: 7 },
-    large: { iconContainer: 76, iconSize: 40, titleSize: 28, tagSize: 13, pupilSize: 10 },
+  const config = {
+    small: {
+      fontSize: 16,
+      eyeSize: 13,
+      pupilSize: 5,
+      beakWidth: 5,
+      beakHeight: 4,
+      taglineSize: 7,
+      letterSpacing: 2,
+      containerGap: 2,
+    },
+    medium: {
+      fontSize: 26,
+      eyeSize: 20,
+      pupilSize: 8,
+      beakWidth: 7,
+      beakHeight: 6,
+      taglineSize: 10,
+      letterSpacing: 3.5,
+      containerGap: 4,
+    },
+    large: {
+      fontSize: 36,
+      eyeSize: 28,
+      pupilSize: 11,
+      beakWidth: 10,
+      beakHeight: 8,
+      taglineSize: 13,
+      letterSpacing: 4.5,
+      containerGap: 6,
+    },
   }[size];
 
   return (
-    <View style={[styles.container, horizontal ? styles.row : styles.column]}>
-      {/* Owl & Camera Aperture Emblem */}
-      <View
-        style={[
-          styles.emblemContainer,
-          {
-            width: dimensions.iconContainer,
-            height: dimensions.iconContainer,
-            borderRadius: dimensions.iconContainer / 2,
-            backgroundColor: theme.colors.surfaceElevated,
-            borderColor: theme.colors.primary,
-            borderWidth: 2,
-          },
-        ]}
-      >
-        {/* Stylized Owl Feather/Ear accents */}
-        <View style={styles.earLeft} />
-        <View style={styles.earRight} />
+    <View style={[styles.container, horizontal ? styles.rowContainer : styles.colContainer]}>
+      {/* Brand Name with Owl-Eyes Motif */}
+      <View style={styles.logoRow}>
+        {/* "FOT" in primary font color */}
+        <Text style={[styles.brandText, { fontSize: config.fontSize, color: fontColor }]}>
+          FOT
+        </Text>
 
-        {/* Central Camera / Owl Eye lens */}
-        <View
-          style={[
-            styles.lensOuter,
-            {
-              width: dimensions.iconContainer * 0.65,
-              height: dimensions.iconContainer * 0.65,
-              borderRadius: (dimensions.iconContainer * 0.65) / 2,
-              backgroundColor: theme.colors.primaryDark,
-            },
-          ]}
-        >
-          {/* Owl Dual Eyes / Aperture Core */}
-          <View style={styles.eyesRow}>
+        {/* Embedded Owl Eyes Emblem for the "O"s */}
+        <View style={[styles.owlEyesWrapper, { height: config.eyeSize, marginHorizontal: 1 }]}>
+          {/* Ear Tuft Left */}
+          <View
+            style={[
+              styles.earTuftLeft,
+              {
+                borderBottomColor: isDark ? '#FFFFFF' : '#071421',
+                borderLeftWidth: config.eyeSize * 0.22,
+                borderRightWidth: config.eyeSize * 0.22,
+                borderBottomWidth: config.eyeSize * 0.35,
+                top: -config.eyeSize * 0.25,
+                left: config.eyeSize * 0.1,
+              },
+            ]}
+          />
+
+          {/* Left Eye (O of FOTO) */}
+          <View
+            style={[
+              styles.eyeCircle,
+              {
+                width: config.eyeSize,
+                height: config.eyeSize,
+                borderRadius: config.eyeSize / 2,
+                borderColor: isDark ? '#FFFFFF' : '#071421',
+                borderWidth: Math.max(1.8, config.eyeSize * 0.1),
+                backgroundColor: isDark ? '#071421' : '#FFFFFF',
+              },
+            ]}
+          >
             <View
               style={[
-                styles.eyePupil,
+                styles.pupil,
                 {
-                  width: dimensions.pupilSize,
-                  height: dimensions.pupilSize,
-                  borderRadius: dimensions.pupilSize / 2,
-                  backgroundColor: theme.colors.accent,
-                },
-              ]}
-            />
-            <View
-              style={[
-                styles.eyePupil,
-                {
-                  width: dimensions.pupilSize,
-                  height: dimensions.pupilSize,
-                  borderRadius: dimensions.pupilSize / 2,
-                  backgroundColor: theme.colors.accent,
+                  width: config.pupilSize,
+                  height: config.pupilSize,
+                  borderRadius: config.pupilSize / 2,
+                  backgroundColor: fontColor,
                 },
               ]}
             />
           </View>
+
+          {/* Central Downward Golden Beak */}
+          <View
+            style={[
+              styles.beak,
+              {
+                borderTopColor: goldColor,
+                borderLeftWidth: config.beakWidth / 2,
+                borderRightWidth: config.beakWidth / 2,
+                borderTopWidth: config.beakHeight,
+                bottom: -config.beakHeight * 0.45,
+              },
+            ]}
+          />
+
+          {/* Right Eye (O of OWL) */}
+          <View
+            style={[
+              styles.eyeCircle,
+              {
+                width: config.eyeSize,
+                height: config.eyeSize,
+                borderRadius: config.eyeSize / 2,
+                borderColor: goldColor,
+                borderWidth: Math.max(1.8, config.eyeSize * 0.1),
+                backgroundColor: isDark ? '#071421' : '#FFFFFF',
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.pupil,
+                {
+                  width: config.pupilSize,
+                  height: config.pupilSize,
+                  borderRadius: config.pupilSize / 2,
+                  backgroundColor: goldColor,
+                },
+              ]}
+            />
+          </View>
+
+          {/* Ear Tuft Right */}
+          <View
+            style={[
+              styles.earTuftRight,
+              {
+                borderBottomColor: goldColor,
+                borderLeftWidth: config.eyeSize * 0.22,
+                borderRightWidth: config.eyeSize * 0.22,
+                borderBottomWidth: config.eyeSize * 0.35,
+                top: -config.eyeSize * 0.25,
+                right: config.eyeSize * 0.1,
+              },
+            ]}
+          />
         </View>
 
-        {/* AI Dot Accent */}
-        <View
+        {/* "WL" in Warm Golden Yellow */}
+        <Text style={[styles.brandText, { fontSize: config.fontSize, color: goldColor }]}>
+          WL
+        </Text>
+      </View>
+
+      {/* Official Tagline: "AI EVENT INNOVATIONS" */}
+      {showTagline && (
+        <Text
           style={[
-            styles.aiSpark,
+            styles.tagline,
             {
-              backgroundColor: theme.colors.accentAmber,
+              fontSize: config.taglineSize,
+              letterSpacing: config.letterSpacing,
+              color: fontColor,
+              marginTop: config.containerGap,
+              opacity: isDark ? 0.95 : 0.85,
             },
           ]}
-        />
-      </View>
-
-      {/* Typography */}
-      <View style={[styles.textBlock, horizontal && styles.textBlockHorizontal]}>
-        <View style={styles.brandTitleRow}>
-          <Text
-            style={[
-              styles.brandTextPrimary,
-              {
-                fontSize: dimensions.titleSize,
-                color: theme.colors.textPrimary,
-              },
-            ]}
-          >
-            FotoOwl
-          </Text>
-          <Text
-            style={[
-              styles.brandTextAi,
-              {
-                fontSize: dimensions.titleSize,
-                color: theme.colors.primary,
-              },
-            ]}
-          >
-            .AI
-          </Text>
-        </View>
-
-        {showTagline && (
-          <Text
-            style={[
-              styles.tagline,
-              {
-                fontSize: dimensions.tagSize,
-                color: theme.colors.textSecondary,
-              },
-            ]}
-          >
-            {taglineText}
-          </Text>
-        )}
-      </View>
+        >
+          {taglineText}
+        </Text>
+      )}
     </View>
   );
 };
@@ -150,89 +204,70 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  row: {
-    flexDirection: 'row',
-  },
-  column: {
+  colContainer: {
     flexDirection: 'column',
+    alignItems: 'center',
   },
-  emblemContainer: {
+  rowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandText: {
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  owlEyesWrapper: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    shadowColor: '#06B6D4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    marginHorizontal: 1,
   },
-  earLeft: {
-    position: 'absolute',
-    top: -3,
-    left: '20%',
-    width: 6,
-    height: 6,
-    backgroundColor: '#06B6D4',
-    borderTopLeftRadius: 4,
+  eyeCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 0.5,
   },
-  earRight: {
-    position: 'absolute',
-    top: -3,
-    right: '20%',
-    width: 6,
-    height: 6,
-    backgroundColor: '#06B6D4',
-    borderTopRightRadius: 4,
-  },
-  lensOuter: {
+  pupil: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  eyesRow: {
-    flexDirection: 'row',
-    gap: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  eyePupil: {
-    shadowColor: '#22D3EE',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 4,
-  },
-  aiSpark: {
+  beak: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 5,
-    height: 5,
-    borderRadius: 3,
+    alignSelf: 'center',
+    width: 0,
+    height: 0,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    zIndex: 10,
   },
-  textBlock: {
-    alignItems: 'center',
-    marginTop: 8,
+  earTuftLeft: {
+    position: 'absolute',
+    width: 0,
+    height: 0,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    transform: [{ rotate: '-18deg' }],
+    zIndex: 5,
   },
-  textBlockHorizontal: {
-    alignItems: 'flex-start',
-    marginTop: 0,
-    marginLeft: 10,
-  },
-  brandTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  brandTextPrimary: {
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  brandTextAi: {
-    fontWeight: '800',
-    letterSpacing: -0.2,
+  earTuftRight: {
+    position: 'absolute',
+    width: 0,
+    height: 0,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    transform: [{ rotate: '18deg' }],
+    zIndex: 5,
   },
   tagline: {
-    marginTop: 2,
-    fontWeight: '400',
-    letterSpacing: 0.2,
+    fontWeight: '700',
     textAlign: 'center',
+    textTransform: 'uppercase',
   },
 });

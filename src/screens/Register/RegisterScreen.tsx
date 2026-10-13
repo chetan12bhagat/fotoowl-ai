@@ -10,6 +10,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthStackParamList } from '../../types/navigation';
@@ -18,7 +19,6 @@ import { BrandLogo } from '../../components/BrandLogo';
 import { TextInputField } from '../../components/TextInputField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useAuth } from '../../hooks/useAuth';
-import { useTheme } from '../../hooks/useTheme';
 import { POPULAR_CITIES } from '../../constants/cities';
 import { validateRegistrationForm, FormErrors } from '../../utils/validation';
 
@@ -27,7 +27,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 const GENDER_OPTIONS: Gender[] = ['Male', 'Female', 'Other'];
 
 export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
-  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { register } = useAuth();
 
   const [formData, setFormData] = useState<RegistrationFormData>({
@@ -36,7 +36,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     gender: 'Male',
     mobileNumber: '',
     address: '',
-    city: 'Bangalore',
+    city: 'Select City',
     password: '',
     confirmPassword: '',
   });
@@ -56,7 +56,11 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleRegister = async () => {
     setGeneralError(null);
-    const validationErrors = validateRegistrationForm(formData);
+    const dataToValidate = {
+      ...formData,
+      city: formData.city === 'Select City' ? '' : formData.city,
+    };
+    const validationErrors = validateRegistrationForm(dataToValidate);
 
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -64,10 +68,18 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     setLoading(true);
-    const result = await register(formData);
+    const result = await register({
+      ...formData,
+      city: formData.city === 'Select City' ? 'Bangalore' : formData.city,
+    });
     setLoading(false);
 
-    if (!result.success) {
+    if (result.success && result.requireVerification) {
+      navigation.navigate('VerifyEmail', {
+        email: result.email || formData.email.trim().toLowerCase(),
+        fullName: formData.fullName.trim(),
+      });
+    } else if (!result.success) {
       setGeneralError(result.message || 'Registration failed.');
     }
   };
@@ -75,57 +87,45 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={styles.screenContainer}
     >
+      {/* Top Header Bar matching Reference Image 2 */}
+      <View style={[styles.topHeader, { paddingTop: Math.max(insets.top + 8, 20) }]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="chevron-back" size={24} color="#101828" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Create Account</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Branding */}
-        <View style={styles.brandHeader}>
-          <BrandLogo size="medium" />
-          <Text
-            style={[
-              styles.screenTitle,
-              { color: theme.colors.textPrimary },
-            ]}
-          >
-            Create an Account
-          </Text>
-          <Text
-            style={[
-              styles.screenSubtitle,
-              { color: theme.colors.textSecondary },
-            ]}
-          >
-            Join FotoOwl.AI to curate, organize, and download event photos
-          </Text>
+        {/* Centered Brand Logo */}
+        <View style={styles.logoSection}>
+          <BrandLogo size="medium" showTagline themeOverride="light" />
         </View>
 
-        {/* Error Banner */}
+        {/* General Error Banner */}
         {generalError && (
-          <View
-            style={[
-              styles.errorBanner,
-              {
-                backgroundColor: 'rgba(244, 63, 94, 0.12)',
-                borderColor: theme.colors.error,
-              },
-            ]}
-          >
-            <Text style={[styles.errorBannerText, { color: theme.colors.error }]}>
-              {generalError}
-            </Text>
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+            <Text style={styles.errorBannerText}>{generalError}</Text>
           </View>
         )}
 
-        {/* Registration Form */}
-        <View style={styles.formCard}>
+        {/* Form Inputs */}
+        <View style={styles.formContainer}>
           {/* Full Name */}
           <TextInputField
             label="Full Name"
-            placeholder="e.g. Maya Sharma"
+            placeholder="John Doe"
             value={formData.fullName}
             onChangeText={(val) => updateField('fullName', val)}
             leftIcon="person-outline"
@@ -136,7 +136,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
           {/* Email Address */}
           <TextInputField
             label="Email Address"
-            placeholder="e.g. maya@fotoowl.ai"
+            placeholder="john@example.com"
             value={formData.email}
             onChangeText={(val) => updateField('email', val)}
             keyboardType="email-address"
@@ -146,90 +146,56 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             required
           />
 
-          {/* Gender Radio Buttons */}
+          {/* Gender Selector with radio buttons */}
           <View style={styles.genderContainer}>
-            <View style={styles.labelRow}>
-              <Text
-                style={[
-                  styles.fieldLabel,
-                  { color: theme.colors.textSecondary },
-                ]}
-              >
-                Gender Selection
-              </Text>
-              <Text style={[styles.required, { color: theme.colors.error }]}> *</Text>
-            </View>
-
-            <View style={styles.radioGroup}>
-              {GENDER_OPTIONS.map((option) => {
-                const isSelected = formData.gender === option;
-                return (
-                  <TouchableOpacity
-                    key={option}
-                    onPress={() => updateField('gender', option)}
-                    activeOpacity={0.7}
-                    style={[
-                      styles.radioButton,
-                      {
-                        backgroundColor: isSelected
-                          ? theme.colors.surfaceElevated
-                          : theme.colors.inputBackground,
-                        borderColor: isSelected
-                          ? theme.colors.primary
-                          : theme.colors.border,
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.radioCircle,
-                        {
-                          borderColor: isSelected
-                            ? theme.colors.primary
-                            : theme.colors.textMuted,
-                        },
-                      ]}
+            <Text style={styles.fieldLabel}>Gender</Text>
+            <View style={styles.genderInputWrapper}>
+              <Ionicons
+                name="people-outline"
+                size={20}
+                color="#667085"
+                style={styles.genderLeadIcon}
+              />
+              <View style={styles.radioGroup}>
+                {GENDER_OPTIONS.map((option) => {
+                  const isSelected = formData.gender === option;
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      onPress={() => updateField('gender', option)}
+                      activeOpacity={0.7}
+                      style={styles.radioOption}
                     >
-                      {isSelected && (
-                        <View
-                          style={[
-                            styles.radioDot,
-                            { backgroundColor: theme.colors.primary },
-                          ]}
-                        />
-                      )}
-                    </View>
-                    <Text
-                      style={[
-                        styles.radioLabel,
-                        {
-                          color: isSelected
-                            ? theme.colors.textPrimary
-                            : theme.colors.textSecondary,
-                          fontWeight: isSelected ? '600' : '400',
-                        },
-                      ]}
-                    >
-                      {option}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                      <View
+                        style={[
+                          styles.radioCircle,
+                          isSelected && styles.radioCircleSelected,
+                        ]}
+                      >
+                        {isSelected && <View style={styles.radioDot} />}
+                      </View>
+                      <Text
+                        style={[
+                          styles.radioLabel,
+                          isSelected && styles.radioLabelSelected,
+                        ]}
+                      >
+                        {option}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-            {errors.gender && (
-              <Text style={[styles.inlineError, { color: theme.colors.error }]}>
-                {errors.gender}
-              </Text>
-            )}
+            {errors.gender && <Text style={styles.inlineError}>{errors.gender}</Text>}
           </View>
 
-          {/* Mobile Number (Numeric, 10 digits) */}
+          {/* Mobile Number */}
           <TextInputField
-            label="Mobile Number (10 Digits)"
-            placeholder="e.g. 9876543210"
+            label="Mobile Number"
+            placeholder="9876543210"
             value={formData.mobileNumber}
             onChangeText={(val) => {
-              // Only allow numeric input
               const numericOnly = val.replace(/[^0-9]/g, '');
               updateField('mobileNumber', numericOnly);
             }}
@@ -242,8 +208,8 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* Address */}
           <TextInputField
-            label="Street Address"
-            placeholder="e.g. 104 Willow Residency, 4th Cross"
+            label="Address"
+            placeholder="123, MG Road, Near Park"
             value={formData.address}
             onChangeText={(val) => updateField('address', val)}
             leftIcon="location-outline"
@@ -252,68 +218,39 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
           />
 
           {/* City Dropdown Selector */}
-          <View style={styles.dropdownContainer}>
-            <View style={styles.labelRow}>
-              <Text
-                style={[
-                  styles.fieldLabel,
-                  { color: theme.colors.textSecondary },
-                ]}
-              >
-                City
-              </Text>
-              <Text style={[styles.required, { color: theme.colors.error }]}> *</Text>
-            </View>
-
+          <View style={styles.cityFieldContainer}>
+            <Text style={styles.fieldLabel}>City</Text>
             <TouchableOpacity
               onPress={() => setCityModalVisible(true)}
               style={[
                 styles.citySelector,
-                {
-                  backgroundColor: theme.colors.inputBackground,
-                  borderColor: errors.city
-                    ? theme.colors.error
-                    : theme.colors.inputBorder,
-                },
+                errors.city && styles.citySelectorError,
               ]}
               activeOpacity={0.75}
             >
               <Ionicons
                 name="business-outline"
                 size={18}
-                color={theme.colors.textMuted}
+                color="#667085"
                 style={styles.cityIcon}
               />
               <Text
                 style={[
                   styles.citySelectorText,
-                  {
-                    color: formData.city
-                      ? theme.colors.textPrimary
-                      : theme.colors.placeholderText,
-                  },
+                  formData.city === 'Select City' && styles.cityPlaceholder,
                 ]}
               >
-                {formData.city || 'Select your city'}
+                {formData.city}
               </Text>
-              <Ionicons
-                name="chevron-down"
-                size={18}
-                color={theme.colors.textMuted}
-              />
+              <Ionicons name="chevron-down" size={18} color="#667085" />
             </TouchableOpacity>
-
-            {errors.city && (
-              <Text style={[styles.inlineError, { color: theme.colors.error }]}>
-                {errors.city}
-              </Text>
-            )}
+            {errors.city && <Text style={styles.inlineError}>{errors.city}</Text>}
           </View>
 
-          {/* Password (>= 6 chars) */}
+          {/* Password */}
           <TextInputField
-            label="Password (min 6 characters)"
-            placeholder="Create password"
+            label="Password"
+            placeholder="••••••••••"
             value={formData.password}
             onChangeText={(val) => updateField('password', val)}
             isPassword
@@ -325,83 +262,55 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
           {/* Confirm Password */}
           <TextInputField
             label="Confirm Password"
-            placeholder="Re-enter password"
+            placeholder="••••••••••"
             value={formData.confirmPassword}
             onChangeText={(val) => updateField('confirmPassword', val)}
             isPassword
-            leftIcon="shield-checkmark-outline"
+            leftIcon="lock-closed-outline"
             error={errors.confirmPassword}
             required
           />
 
-          {/* Register Submit Button */}
-          <View style={styles.submitSection}>
+          {/* Full-width Gold Create Account Button */}
+          <View style={styles.createBtnWrapper}>
             <PrimaryButton
-              title="Register & Get Started"
+              title="Create Account"
               onPress={handleRegister}
               loading={loading}
-              icon="person-add-outline"
+              style={styles.createButton}
+              textStyle={styles.createButtonText}
             />
           </View>
         </View>
 
         {/* Footer Link to Login */}
         <View style={styles.footerRow}>
-          <Text
-            style={[
-              styles.footerText,
-              { color: theme.colors.textSecondary },
-            ]}
-          >
-            Already registered?{' '}
-          </Text>
+          <Text style={styles.footerText}>Already have an account? </Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('Login')}
             activeOpacity={0.7}
           >
-            <Text
-              style={[
-                styles.footerLink,
-                { color: theme.colors.primary },
-              ]}
-            >
-              Sign In
-            </Text>
+            <Text style={styles.footerLink}>Login</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* City Selection Modal */}
+      {/* City Picker Modal */}
       <Modal
         visible={cityModalVisible}
         transparent
         animationType="slide"
         onRequestClose={() => setCityModalVisible(false)}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}>
-          <View
-            style={[
-              styles.cityModalContent,
-              {
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.border,
-              },
-            ]}
-          >
+        <View style={styles.modalOverlay}>
+          <View style={styles.cityModalContent}>
             <View style={styles.cityModalHeader}>
-              <Text
-                style={[
-                  styles.cityModalTitle,
-                  { color: theme.colors.textPrimary },
-                ]}
-              >
-                Select City
-              </Text>
+              <Text style={styles.cityModalTitle}>Select City</Text>
               <TouchableOpacity
                 onPress={() => setCityModalVisible(false)}
                 style={styles.modalCloseBtn}
               >
-                <Ionicons name="close" size={22} color={theme.colors.textPrimary} />
+                <Ionicons name="close" size={24} color="#101828" />
               </TouchableOpacity>
             </View>
 
@@ -419,33 +328,19 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                     }}
                     style={[
                       styles.cityItem,
-                      {
-                        backgroundColor: isSelected
-                          ? theme.colors.surfaceElevated
-                          : 'transparent',
-                        borderBottomColor: theme.colors.borderSubtle,
-                      },
+                      isSelected && styles.cityItemSelected,
                     ]}
                   >
                     <Text
                       style={[
                         styles.cityItemText,
-                        {
-                          color: isSelected
-                            ? theme.colors.primary
-                            : theme.colors.textPrimary,
-                          fontWeight: isSelected ? '700' : '400',
-                        },
+                        isSelected && styles.cityItemTextSelected,
                       ]}
                     >
                       {item}
                     </Text>
                     {isSelected && (
-                      <Ionicons
-                        name="checkmark"
-                        size={20}
-                        color={theme.colors.primary}
-                      />
+                      <Ionicons name="checkmark" size={20} color="#FFB900" />
                     )}
                   </TouchableOpacity>
                 );
@@ -459,117 +354,171 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  screenContainer: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#101828',
+  },
+  headerSpacer: {
+    width: 40,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 36,
+    paddingHorizontal: 24,
+    paddingTop: 8,
     paddingBottom: 40,
   },
-  brandHeader: {
+  logoSection: {
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  screenTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginTop: 14,
-    letterSpacing: -0.4,
-  },
-  screenSubtitle: {
-    fontSize: 13,
-    marginTop: 4,
-    textAlign: 'center',
-    maxWidth: 290,
+    marginTop: 6,
+    marginBottom: 20,
   },
   errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 12,
     borderRadius: 10,
     borderWidth: 1,
-    marginBottom: 18,
-  },
-  errorBannerText: {
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  formCard: {
-    width: '100%',
-  },
-  genderContainer: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
     marginBottom: 16,
   },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+  errorBannerText: {
+    color: '#B91C1C',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
+  formContainer: {
+    width: '100%',
   },
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
+    color: '#667085',
+    marginBottom: 6,
+    letterSpacing: -0.1,
   },
-  required: {
-    fontSize: 13,
-    fontWeight: '700',
+  genderContainer: {
+    marginBottom: 16,
+  },
+  genderInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E4E7EC',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+  },
+  genderLeadIcon: {
+    marginRight: 12,
   },
   radioGroup: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  radioButton: {
+    alignItems: 'center',
     flex: 1,
+    gap: 16,
+  },
+  radioOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 8,
   },
   radioCircle: {
     width: 18,
     height: 18,
     borderRadius: 9,
     borderWidth: 1.5,
+    borderColor: '#D0D5DD',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 6,
   },
+  radioCircleSelected: {
+    borderColor: '#FFB900',
+    backgroundColor: '#FFB900',
+  },
   radioDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
   },
   radioLabel: {
-    fontSize: 13,
+    fontSize: 14,
+    color: '#344054',
   },
-  dropdownContainer: {
+  radioLabelSelected: {
+    fontWeight: '600',
+    color: '#101828',
+  },
+  cityFieldContainer: {
     marginBottom: 16,
   },
   citySelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
-    borderRadius: 10,
+    height: 50,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    borderColor: '#E4E7EC',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+  },
+  citySelectorError: {
+    borderColor: '#EF4444',
   },
   cityIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   citySelectorText: {
     flex: 1,
     fontSize: 15,
+    color: '#101828',
+  },
+  cityPlaceholder: {
+    color: '#98A2B3',
   },
   inlineError: {
     fontSize: 12,
+    color: '#EF4444',
     marginTop: 4,
     fontWeight: '500',
   },
-  submitSection: {
-    marginTop: 12,
+  createBtnWrapper: {
+    width: '100%',
+    marginTop: 10,
+  },
+  createButton: {
+    width: '100%',
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#FFB900',
+  },
+  createButtonText: {
+    color: '#071421',
+    fontWeight: '800',
+    fontSize: 16,
   },
   footerRow: {
     flexDirection: 'row',
@@ -579,19 +528,22 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
+    color: '#667085',
   },
   footerLink: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#FFB900',
   },
   modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(7, 20, 33, 0.6)',
     justifyContent: 'flex-end',
   },
   cityModalContent: {
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    borderTopWidth: 1,
     paddingTop: 20,
     paddingHorizontal: 20,
     maxHeight: '65%',
@@ -601,10 +553,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E4E7EC',
   },
   cityModalTitle: {
     fontSize: 18,
     fontWeight: '700',
+    color: '#101828',
   },
   modalCloseBtn: {
     padding: 4,
@@ -614,11 +569,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 14,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
+    borderBottomColor: '#F2F4F7',
+  },
+  cityItemSelected: {
+    backgroundColor: '#FFFBEB',
     borderRadius: 8,
   },
   cityItemText: {
     fontSize: 15,
+    color: '#101828',
+  },
+  cityItemTextSelected: {
+    fontWeight: '700',
+    color: '#D97706',
   },
 });

@@ -73,7 +73,7 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
         return '#FFFFFF';
       case 'primary':
       default:
-        return '#FFFFFF';
+        return '#071421'; // High-contrast dark navy on golden yellow button
     }
   };
 
@@ -123,13 +123,13 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
 const styles = StyleSheet.create({
   button: {
     height: 50,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     letterSpacing: -0.2,
   },
 });
