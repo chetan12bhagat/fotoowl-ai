@@ -5,7 +5,7 @@ export type AuthStackParamList = {
   Splash: undefined;
   Login: undefined;
   Register: undefined;
-  VerifyEmail: { email: string; fullName?: string };
+  VerifyEmail: { email: string; fullName?: string; otp?: string };
 };
 
 export type MainTabParamList = {

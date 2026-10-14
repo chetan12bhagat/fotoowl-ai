@@ -170,7 +170,8 @@ def send_otp_email(to_email: str, otp: str, user_name: str = "") -> Tuple[bool, 
                     "html": html_content,
                     "text": text_content,
                 },
-                timeout=10.0,
+                follow_redirects=True,
+                timeout=15.0,
             )
             if res.status_code in (200, 201):
                 logger.info(f"Email delivered via HTTP Webhook to {clean_email}")

@@ -13,13 +13,10 @@ import {
   saveRegisteredUser,
   updateUserProfileInRegistry,
   deleteRegisteredUserFromRegistry,
+  savePendingOtp,
+  getPendingOtp,
+  clearPendingOtp,
 } from '../storage/asyncStorage';
-import {
-  registerUserApi,
-  verifyEmailOtpApi,
-  resendOtpApi,
-  loginUserApi,
-} from '../services/authApi';
 
 export interface AuthContextValue {
   user: User | null;
@@ -29,17 +26,17 @@ export interface AuthContextValue {
   login: (
     email: string,
     password: string
-  ) => Promise<{ success: boolean; message?: string; requireVerification?: boolean; email?: string }>;
+  ) => Promise<{ success: boolean; message?: string; requireVerification?: boolean; email?: string; otp?: string }>;
   register: (
     data: RegistrationFormData
-  ) => Promise<{ success: boolean; message?: string; requireVerification?: boolean; email?: string }>;
+  ) => Promise<{ success: boolean; message?: string; requireVerification?: boolean; email?: string; otp?: string }>;
   verifyEmail: (
     email: string,
     otp: string
   ) => Promise<{ success: boolean; message?: string }>;
   resendOtp: (
     email: string
-  ) => Promise<{ success: boolean; message?: string; cooldownSeconds?: number }>;
+  ) => Promise<{ success: boolean; message?: string; cooldownSeconds?: number; otp?: string }>;
   logout: () => Promise<void>;
   updateProfile: (data: ProfileUpdateData) => Promise<{ success: boolean; message?: string }>;
   updateAvatar: (avatarUri: string | null) => Promise<{ success: boolean; message?: string }>;
@@ -80,54 +77,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (
     email: string,
     password: string
-  ): Promise<{ success: boolean; message?: string; requireVerification?: boolean; email?: string }> => {
+  ): Promise<{ success: boolean; message?: string; requireVerification?: boolean; email?: string; otp?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
     try {
-      // 1. Attempt FastAPI backend authentication first
-      const apiResult = await loginUserApi(cleanEmail, cleanPassword);
-
-      if (apiResult.errorType === 'EMAIL_NOT_VERIFIED') {
-        return {
-          success: false,
-          requireVerification: true,
-          email: cleanEmail,
-          message: apiResult.message || 'Please verify your email address to continue.',
-        };
-      }
-
-      if (apiResult.success && apiResult.token && apiResult.user) {
-        const userSessionData: User = {
-          ...apiResult.user,
-          gender: (apiResult.user.gender as any) || 'Male',
+      // Check built-in demo account
+      if (cleanEmail === 'demo@fotoowl.ai' && cleanPassword === 'password123') {
+        const demoUser: User = {
+          id: 'demo_user_fotoowl',
+          fullName: 'Alex Morgan',
+          email: 'demo@fotoowl.ai',
+          gender: 'Male',
+          mobileNumber: '9876543210',
+          address: '742 Evergreen Terrace, Koramangala',
+          city: 'Bangalore',
+          isVerified: true,
+          avatarId: 'owl_avatar_1',
+          createdAt: new Date().toISOString(),
         };
 
         const newSession: AuthSession = {
-          user: userSessionData,
-          token: apiResult.token,
+          user: demoUser,
+          token: `fotoowl_tok_${Date.now()}_demo`,
           loginTime: new Date().toISOString(),
         };
 
         await saveAuthSession(newSession);
         setSession(newSession);
-        setUser(userSessionData);
+        setUser(demoUser);
         return { success: true };
       }
 
-      // If backend returned explicit credential error
-      if (apiResult.message && !apiResult.message.includes('Network error')) {
-        return {
-          success: false,
-          message: apiResult.message,
-        };
-      }
-    } catch {
-      // Network failure, check local storage fallback below
-    }
-
-    // 2. Offline / Local fallback
-    try {
+      // Check registered users in AsyncStorage
       const registeredUsers = await getRegisteredUsers();
       const existingUser = registeredUsers.find(
         (u) => u.email.toLowerCase() === cleanEmail
@@ -147,12 +129,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
       }
 
+      // Check if user requires OTP email verification
       if (existingUser.isVerified === false) {
+        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        await savePendingOtp(cleanEmail, generatedOtp);
+
         return {
           success: false,
           requireVerification: true,
           email: cleanEmail,
-          message: 'Please verify your email address before logging in.',
+          otp: generatedOtp,
+          message: 'Please verify your email address to continue.',
         };
       }
 
@@ -181,50 +168,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (
     data: RegistrationFormData
-  ): Promise<{ success: boolean; message?: string; requireVerification?: boolean; email?: string }> => {
+  ): Promise<{ success: boolean; message?: string; requireVerification?: boolean; email?: string; otp?: string }> => {
     const cleanEmail = data.email.trim().toLowerCase();
 
-    try {
-      // 1. Submit to FastAPI backend
-      const apiResult = await registerUserApi(data);
-
-      if (apiResult.success) {
-        // Cache user locally as unverified
-        const pendingUser: User = {
-          id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          fullName: data.fullName.trim(),
-          email: cleanEmail,
-          gender: data.gender,
-          mobileNumber: data.mobileNumber.trim(),
-          address: data.address.trim(),
-          city: data.city.trim(),
-          password: data.password.trim(),
-          avatarId: 'owl_avatar_1',
-          isVerified: false,
-          createdAt: new Date().toISOString(),
-        };
-        await saveRegisteredUser(pendingUser);
-
-        return {
-          success: true,
-          requireVerification: true,
-          email: cleanEmail,
-          message: apiResult.message,
-        };
-      }
-    } catch (apiError: any) {
-      // If error is duplicate email from backend
-      if (apiError.message && (apiError.message.includes('already exists') || apiError.message.includes('registered'))) {
-        return {
-          success: false,
-          message: apiError.message,
-        };
-      }
-
-      console.warn('[AuthContext] FastAPI register error, falling back locally:', apiError.message);
-    }
-
-    // 2. Offline / Local fallback if backend is unreachable
     try {
       const registeredUsers = await getRegisteredUsers();
       const isDuplicate = registeredUsers.some(
@@ -237,6 +183,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           message: 'An account with this email address already exists. Please log in instead.',
         };
       }
+
+      // Generate a 6-digit OTP code for frontend verification
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      await savePendingOtp(cleanEmail, generatedOtp);
 
       const newUser: User = {
         id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -258,7 +208,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         success: true,
         requireVerification: true,
         email: cleanEmail,
-        message: 'Registration submitted. Please verify the code sent to your email.',
+        otp: generatedOtp,
+        message: 'Account created. Enter your 6-digit code to complete verification.',
       };
     } catch (error: any) {
       console.error('[AuthContext] Registration error:', error);
@@ -274,90 +225,78 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     otp: string
   ): Promise<{ success: boolean; message?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
+    const cleanOtp = otp.trim();
 
     try {
-      // 1. Verify with FastAPI backend
-      const apiResult = await verifyEmailOtpApi(cleanEmail, otp);
+      const storedOtp = await getPendingOtp(cleanEmail);
 
-      if (apiResult.success && apiResult.token) {
-        const verifiedUser: User = apiResult.user || {
-          id: `user_${Date.now()}`,
-          fullName: 'FotoOwl Member',
-          email: cleanEmail,
-          gender: 'Male',
-          mobileNumber: '',
-          address: '',
-          city: 'Bangalore',
-          isVerified: true,
-          createdAt: new Date().toISOString(),
+      // Validate: allow either the generated OTP or master fallback '123456'
+      const isValid = cleanOtp === storedOtp || cleanOtp === '123456';
+
+      if (!isValid) {
+        return {
+          success: false,
+          message: 'Incorrect verification code. Please check and try again.',
         };
-
-        const newSession: AuthSession = {
-          user: verifiedUser,
-          token: apiResult.token,
-          loginTime: new Date().toISOString(),
-        };
-
-        await saveAuthSession(newSession);
-        setSession(newSession);
-        setUser(verifiedUser);
-
-        // Update local registry
-        const registered = await getRegisteredUsers();
-        const existing = registered.find((u) => u.email.toLowerCase() === cleanEmail);
-        if (existing) {
-          await updateUserProfileInRegistry({ ...existing, isVerified: true });
-        }
-
-        return { success: true, message: apiResult.message };
       }
-    } catch (apiError: any) {
-      // If backend returned explicit error message (e.g. incorrect or expired)
-      if (apiError.message && !apiError.message.includes('timed out') && !apiError.message.includes('Network')) {
-        return { success: false, message: apiError.message };
-      }
-      console.warn('[AuthContext] verifyEmail error, checking fallback:', apiError.message);
-    }
 
-    // 2. Offline / Local fallback for testing
-    try {
+      // Mark user as verified in AsyncStorage registry
       const registered = await getRegisteredUsers();
       const existing = registered.find((u) => u.email.toLowerCase() === cleanEmail);
-      if (existing) {
-        const verifiedUser: User = {
-          ...existing,
-          isVerified: true,
-        };
-        await updateUserProfileInRegistry(verifiedUser);
 
-        const newSession: AuthSession = {
-          user: verifiedUser,
-          token: `fotoowl_tok_${Date.now()}`,
-          loginTime: new Date().toISOString(),
-        };
-        await saveAuthSession(newSession);
-        setSession(newSession);
-        setUser(verifiedUser);
-        return { success: true };
-      }
+      const verifiedUser: User = existing
+        ? {
+            ...existing,
+            isVerified: true,
+          }
+        : {
+            id: `user_${Date.now()}`,
+            fullName: 'FotoOwl Member',
+            email: cleanEmail,
+            gender: 'Male',
+            mobileNumber: '',
+            address: '',
+            city: 'Bangalore',
+            isVerified: true,
+            createdAt: new Date().toISOString(),
+          };
 
-      return { success: false, message: 'No pending account found for this email.' };
+      delete verifiedUser.password;
+
+      await updateUserProfileInRegistry(verifiedUser);
+      await clearPendingOtp(cleanEmail);
+
+      const newSession: AuthSession = {
+        user: verifiedUser,
+        token: `fotoowl_tok_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        loginTime: new Date().toISOString(),
+      };
+
+      await saveAuthSession(newSession);
+      setSession(newSession);
+      setUser(verifiedUser);
+
+      return { success: true, message: 'Email verified successfully!' };
     } catch (error: any) {
+      console.error('[AuthContext] Verification error:', error);
       return { success: false, message: error?.message || 'Verification failed.' };
     }
   };
 
   const resendOtp = async (
     email: string
-  ): Promise<{ success: boolean; message?: string; cooldownSeconds?: number }> => {
+  ): Promise<{ success: boolean; message?: string; cooldownSeconds?: number; otp?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
 
     try {
-      const res = await resendOtpApi(cleanEmail);
+      const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      await savePendingOtp(cleanEmail, newOtp);
+
       return {
         success: true,
-        message: res.message,
-        cooldownSeconds: res.cooldown_seconds,
+        message: 'A new verification code has been generated.',
+        cooldownSeconds: 30,
+        otp: newOtp,
       };
     } catch (error: any) {
       return {
@@ -390,7 +329,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         updatedAt: new Date().toISOString(),
       };
 
-      // Update registry and session
       await updateUserProfileInRegistry(updatedUser);
 
       if (session) {
@@ -427,7 +365,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         updatedAt: new Date().toISOString(),
       };
 
-      // Update registry and session
       await updateUserProfileInRegistry(updatedUser);
 
       if (session) {
@@ -472,6 +409,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       city: 'Bangalore',
       password: 'password123',
       avatarId: 'owl_avatar_1',
+      isVerified: true,
       createdAt: new Date().toISOString(),
     };
     await saveRegisteredUser(demoUser);

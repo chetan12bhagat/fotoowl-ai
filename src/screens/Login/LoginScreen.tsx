@@ -72,6 +72,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         // Account unverified; redirect to VerifyEmail screen
         navigation.navigate('VerifyEmail', {
           email: result.email || cleanEmail,
+          otp: result.otp || '123456',
         });
       } else {
         setGeneralError(result.message || 'Login failed. Please verify your credentials.');

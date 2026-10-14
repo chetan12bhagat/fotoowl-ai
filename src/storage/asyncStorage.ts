@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   USERS: '@fotoowl_users',
   FAVORITES: '@fotoowl_favorites',
   THEME: '@fotoowl_theme',
+  PENDING_OTPS: '@fotoowl_pending_otps',
 };
 
 // ------------------------------------------------------------
@@ -93,6 +94,50 @@ export const updateUserProfileInRegistry = async (
   } catch (error) {
     console.error('[Storage] Error updating profile in registry:', error);
     throw error;
+  }
+};
+
+// ------------------------------------------------------------
+// Pending OTP Codes Persistence (Frontend Verification)
+// ------------------------------------------------------------
+
+export const savePendingOtp = async (email: string, otp: string): Promise<void> => {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.PENDING_OTPS);
+    const otps = raw ? JSON.parse(raw) : {};
+    otps[email.toLowerCase()] = {
+      otp: otp.trim(),
+      createdAt: Date.now(),
+    };
+    await AsyncStorage.setItem(STORAGE_KEYS.PENDING_OTPS, JSON.stringify(otps));
+  } catch (error) {
+    console.error('[Storage] Error saving pending OTP:', error);
+  }
+};
+
+export const getPendingOtp = async (email: string): Promise<string | null> => {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.PENDING_OTPS);
+    if (!raw) return null;
+    const otps = JSON.parse(raw);
+    const record = otps[email.toLowerCase()];
+    if (!record || !record.otp) return null;
+    return record.otp;
+  } catch (error) {
+    console.error('[Storage] Error reading pending OTP:', error);
+    return null;
+  }
+};
+
+export const clearPendingOtp = async (email: string): Promise<void> => {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.PENDING_OTPS);
+    if (!raw) return;
+    const otps = JSON.parse(raw);
+    delete otps[email.toLowerCase()];
+    await AsyncStorage.setItem(STORAGE_KEYS.PENDING_OTPS, JSON.stringify(otps));
+  } catch (error) {
+    console.error('[Storage] Error clearing pending OTP:', error);
   }
 };
 

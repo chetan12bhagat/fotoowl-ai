@@ -32,11 +32,25 @@ export const VerifyEmailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const email = route.params?.email || 'user@fotoowl.ai';
   const fullName = route.params?.fullName || '';
+  const [activeOtp, setActiveOtp] = useState<string>(route.params?.otp || '123456');
 
   // 6-digit OTP states
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [focusedIndex, setFocusedIndex] = useState<number>(0);
   const inputRefs = useRef<Array<TextInput | null>>([]);
+
+  const handleAutoFill = (code: string) => {
+    setErrorMessage(null);
+    setErrorType(null);
+    const cleaned = code.replace(/[^0-9]/g, '');
+    const newDigits = Array(OTP_LENGTH).fill('');
+    for (let i = 0; i < Math.min(cleaned.length, OTP_LENGTH); i++) {
+      newDigits[i] = cleaned[i];
+    }
+    setOtpDigits(newDigits);
+    setFocusedIndex(OTP_LENGTH - 1);
+    submitOtp(cleaned);
+  };
 
   // Timer & UI states
   const [countdown, setCountdown] = useState<number>(RESEND_COOLDOWN_SECONDS);
@@ -187,6 +201,9 @@ export const VerifyEmailScreen: React.FC<Props> = ({ route, navigation }) => {
       setResending(false);
 
       if (result.success) {
+        if (result.otp) {
+          setActiveOtp(result.otp);
+        }
         setCountdown(result.cooldownSeconds || RESEND_COOLDOWN_SECONDS);
         // Clear input boxes
         setOtpDigits(Array(OTP_LENGTH).fill(''));
@@ -311,6 +328,33 @@ export const VerifyEmailScreen: React.FC<Props> = ({ route, navigation }) => {
                   <Text style={styles.errorBannerText}>{errorMessage}</Text>
                 </View>
               )}
+
+              {/* Frontend Verification Code Card */}
+              <View
+                style={[
+                  styles.codeBadgeContainer,
+                  {
+                    backgroundColor: isDark ? '#102235' : '#FFFDF5',
+                    borderColor: isDark ? '#1C2F45' : '#FDE68A',
+                  },
+                ]}
+              >
+                <View style={styles.codeBadgeLeft}>
+                  <Ionicons name="key-outline" size={16} color="#FFB900" style={{ marginRight: 6 }} />
+                  <Text style={[styles.codeBadgeLabel, { color: isDark ? '#94A3B8' : '#667085' }]}>
+                    Your Code:
+                  </Text>
+                  <Text style={styles.codeBadgeValue}>{activeOtp}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleAutoFill(activeOtp)}
+                  style={styles.autoFillBtn}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="flash" size={13} color="#071421" style={{ marginRight: 4 }} />
+                  <Text style={styles.autoFillBtnText}>Auto-Fill</Text>
+                </TouchableOpacity>
+              </View>
 
               {/* Six OTP Input Boxes */}
               <View style={styles.otpRow}>
@@ -553,6 +597,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#B42318',
     flex: 1,
+  },
+  codeBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  codeBadgeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  codeBadgeLabel: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    marginRight: 6,
+  },
+  codeBadgeValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#FFB900',
+    letterSpacing: 1.5,
+  },
+  autoFillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFB900',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  autoFillBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#071421',
   },
   otpRow: {
     flexDirection: 'row',

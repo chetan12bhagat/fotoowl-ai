@@ -78,6 +78,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       navigation.navigate('VerifyEmail', {
         email: result.email || formData.email.trim().toLowerCase(),
         fullName: formData.fullName.trim(),
+        otp: result.otp || '123456',
       });
     } else if (!result.success) {
       setGeneralError(result.message || 'Registration failed.');
