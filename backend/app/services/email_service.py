@@ -92,8 +92,93 @@ def send_otp_email(to_email: str, otp: str, user_name: str = "") -> Tuple[bool, 
     Falls back gracefully to development console output if SMTP credentials are missing or network fails.
     """
     clean_email = to_email.strip()
+    text_content = render_otp_text(otp, user_name)
+    html_content = render_otp_html(otp, user_name)
 
-    # Check if SMTP is configured
+    # 1. HTTP-Based Delivery via Resend (Bypasses Render port 587/465 block)
+    if settings.RESEND_API_KEY:
+        try:
+            import httpx
+            resend_sender = "FotoOwl AI <onboarding@resend.dev>"
+            if "@" in settings.EMAIL_FROM and "fotoowl.ai" not in settings.EMAIL_FROM:
+                resend_sender = settings.EMAIL_FROM
+
+            res = httpx.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {settings.RESEND_API_KEY.strip()}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": resend_sender,
+                    "to": [clean_email],
+                    "subject": f"FotoOwl AI Verification Code: {otp}",
+                    "html": html_content,
+                    "text": text_content,
+                },
+                timeout=10.0,
+            )
+            if res.status_code in (200, 201):
+                logger.info(f"Email delivered via Resend HTTP API to {clean_email}")
+                return True, "Email sent successfully via Resend HTTP."
+            else:
+                logger.error(f"Resend HTTP API returned status {res.status_code}: {res.text}")
+        except Exception as http_err:
+            logger.error(f"Resend HTTP delivery failed: {http_err}")
+
+    # 2. HTTP-Based Delivery via Brevo (Sendinblue)
+    if settings.BREVO_API_KEY:
+        try:
+            import httpx
+            brevo_sender = "bhagatchetan583@gmail.com"
+            if settings.SMTP_USERNAME:
+                brevo_sender = settings.SMTP_USERNAME
+            res = httpx.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "api-key": settings.BREVO_API_KEY.strip(),
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "sender": {"name": "FotoOwl AI", "email": brevo_sender},
+                    "to": [{"email": clean_email}],
+                    "subject": f"FotoOwl AI Verification Code: {otp}",
+                    "htmlContent": html_content,
+                    "textContent": text_content,
+                },
+                timeout=10.0,
+            )
+            if res.status_code in (200, 201):
+                logger.info(f"Email delivered via Brevo HTTP API to {clean_email}")
+                return True, "Email sent successfully via Brevo HTTP."
+            else:
+                logger.error(f"Brevo HTTP API returned status {res.status_code}: {res.text}")
+        except Exception as brevo_err:
+            logger.error(f"Brevo HTTP delivery failed: {brevo_err}")
+
+    # 3. HTTP-Based Delivery via Webhook Relay
+    if settings.EMAIL_HTTP_URL:
+        try:
+            import httpx
+            res = httpx.post(
+                settings.EMAIL_HTTP_URL.strip(),
+                json={
+                    "to": clean_email,
+                    "otp": otp,
+                    "user_name": user_name,
+                    "subject": f"FotoOwl AI Verification Code: {otp}",
+                    "html": html_content,
+                    "text": text_content,
+                },
+                timeout=10.0,
+            )
+            if res.status_code in (200, 201):
+                logger.info(f"Email delivered via HTTP Webhook to {clean_email}")
+                return True, "Email sent successfully via HTTP Webhook."
+        except Exception as hook_err:
+            logger.error(f"HTTP Webhook delivery failed: {hook_err}")
+
+    # 4. Standard SMTP Delivery (Used in local dev or paid cloud instances)
     has_smtp = bool(
         settings.SMTP_USERNAME
         and settings.SMTP_PASSWORD
@@ -127,9 +212,6 @@ def send_otp_email(to_email: str, otp: str, user_name: str = "") -> Tuple[bool, 
         # Alternative container for text and HTML
         msg_alt = MIMEMultipart("alternative")
         msg_root.attach(msg_alt)
-
-        text_content = render_otp_text(otp, user_name)
-        html_content = render_otp_html(otp, user_name)
 
         part_text = MIMEText(text_content, "plain", "utf-8")
         part_html = MIMEText(html_content, "html", "utf-8")
@@ -165,6 +247,6 @@ def send_otp_email(to_email: str, otp: str, user_name: str = "") -> Tuple[bool, 
         return True, "Email sent successfully."
     except Exception as e:
         logger.error(f"Failed to send verification email to {clean_email}: {str(e)}")
-        # In development, also log the code so developer is not blocked
+        # In development or when cloud host blocks SMTP ports, log code for quick rescue
         logger.info(f"[DEV FALLBACK] OTP for {clean_email}: {otp}")
         return False, f"Email delivery failed: {str(e)}"

@@ -39,5 +39,10 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = "FotoOwl.AI <no-reply@fotoowl.ai>"
     SMTP_TLS: bool = True
 
+    # HTTP Email Service (Required for cloud hosts like Render free tier where raw SMTP ports 587/465 are blocked)
+    RESEND_API_KEY: Optional[str] = None
+    BREVO_API_KEY: Optional[str] = None
+    EMAIL_HTTP_URL: Optional[str] = None
+
 
 settings = Settings()
