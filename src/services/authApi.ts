@@ -73,7 +73,7 @@ export interface LoginApiResponse {
 async function fetchWithTimeout(
   endpoint: string,
   options: RequestInit = {},
-  timeoutMs = 12000
+  timeoutMs = 30000
 ): Promise<Response> {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;

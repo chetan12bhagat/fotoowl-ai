@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import Optional
 from ..database import get_db
@@ -70,7 +70,11 @@ def get_current_user(
 
 
 @router.post("/register", response_model=UserRegisterResponse)
-def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
+def register(
+    request: UserRegisterRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """
     Registers a new user account in a pending unverified state.
     Generates a secure 6-digit OTP and dispatches it to the user's email.
@@ -119,8 +123,8 @@ def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
     # Generate and securely store 6-digit OTP
     raw_otp = create_and_save_otp(db, clean_email)
 
-    # Send verification email (or log to console in development mode)
-    send_otp_email(clean_email, raw_otp, user.full_name)
+    # Send verification email asynchronously in background task for sub-second API response
+    background_tasks.add_task(send_otp_email, clean_email, raw_otp, user.full_name)
 
     return UserRegisterResponse(
         success=True,
@@ -188,7 +192,11 @@ def verify_email(request: VerifyOtpRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/resend-otp", response_model=ResendOtpResponse)
-def resend_otp(request: ResendOtpRequest, db: Session = Depends(get_db)):
+def resend_otp(
+    request: ResendOtpRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """
     Issues a fresh 6-digit OTP and invalidates previous codes.
     Enforces a 60-second cooldown timer between requests.
@@ -217,7 +225,7 @@ def resend_otp(request: ResendOtpRequest, db: Session = Depends(get_db)):
         )
 
     raw_otp = create_and_save_otp(db, clean_email)
-    send_otp_email(clean_email, raw_otp, user.full_name)
+    background_tasks.add_task(send_otp_email, clean_email, raw_otp, user.full_name)
 
     return ResendOtpResponse(
         success=True,
@@ -227,7 +235,11 @@ def resend_otp(request: ResendOtpRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=UserLoginResponse)
-def login(request: UserLoginRequest, db: Session = Depends(get_db)):
+def login(
+    request: UserLoginRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """
     Authenticates email and password.
     Rejects unverified accounts and automatically sends a fresh OTP.
@@ -246,7 +258,7 @@ def login(request: UserLoginRequest, db: Session = Depends(get_db)):
         can_send, _ = can_resend_otp(db, clean_email)
         if can_send:
             raw_otp = create_and_save_otp(db, clean_email)
-            send_otp_email(clean_email, raw_otp, user.full_name)
+            background_tasks.add_task(send_otp_email, clean_email, raw_otp, user.full_name)
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
